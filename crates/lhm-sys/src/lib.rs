@@ -59,20 +59,12 @@ struct FfiResult<O: Copy, E: Copy> {
     data: FfiResultUnion<O, E>,
 }
 
-/// This is required for C# to properly initialize, this symbol just needs to
-/// make its way downstream into the final binary
-#[cfg(feature = "static")]
-#[used]
-static FORCE_INCLUDE: unsafe extern "C" fn() = static_initialization;
+// NOTE: .NET 8.0 with PublishAot=true handles initialization automatically
+// The NativeAOT_StaticInitialization symbol is no longer needed
+// Removed for .NET 8.0 compatibility
 
 #[link(name = "lhm-bridge")]
 unsafe extern "C" {
-
-    /// When statically linked we must ensure the NativeAOT_StaticInitialization symbol
-    /// is present on the compiled binary
-    #[cfg(feature = "static")]
-    #[link_name = "NativeAOT_StaticInitialization"]
-    pub fn static_initialization();
 
     unsafe fn free_string(ptr: Utf8Ptr);
     unsafe fn free_shared_array(ptr: SharedFfiArrayPtr);

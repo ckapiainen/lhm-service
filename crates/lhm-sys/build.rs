@@ -24,12 +24,6 @@ fn build_library() {
     // Path to the nuget packages
     let nuget_path = out_path.join(".nuget");
 
-    // Get the AOT SDK path
-    let sdk_path = nuget_path
-        .join("runtime.win-x64.microsoft.dotnet.ilcompiler")
-        .join("7.0.0")
-        .join("sdk");
-
     // Change nuget packages path
     unsafe {
         env::set_var("NUGET_PACKAGES", nuget_path.clone());
@@ -86,6 +80,19 @@ fn build_library() {
 
     let native_path = publish_path.join("native");
 
+    let ilcompiler_base = nuget_path.join("runtime.win-x64.microsoft.dotnet.ilcompiler");
+    let sdk_path = if ilcompiler_base.exists() {
+        // Find the first version directory
+        std::fs::read_dir(&ilcompiler_base)
+            .expect("failed to read ilcompiler directory")
+            .filter_map(|e| e.ok())
+            .find(|e| e.path().is_dir())
+            .map(|e| e.path().join("sdk"))
+            .expect("no ILCompiler version found")
+    } else {
+        panic!("ILCompiler SDK not found after build - this should not happen");
+    };
+
     // Setup linker paths
     println!("cargo:rustc-link-search=native={}", native_path.display());
     println!("cargo:rustc-link-search=native={}", sdk_path.display());
@@ -105,9 +112,10 @@ fn link_dylib() {
 
 #[cfg(feature = "static")]
 fn link_static() {
-    // Link to required C# AOT libraries
-    println!("cargo:rustc-link-lib=static=bootstrapperdll");
+    // Link to required C# AOT libraries (.lib files)
     println!("cargo:rustc-link-lib=static=Runtime.WorkstationGC");
+    println!("cargo:rustc-link-lib=static=Runtime.VxsortEnabled");
+    println!("cargo:rustc-link-lib=static=eventpipe-disabled");
     println!("cargo:rustc-link-lib=static=System.Globalization.Native.Aot");
     println!("cargo:rustc-link-lib=static=System.IO.Compression.Native.Aot");
 
